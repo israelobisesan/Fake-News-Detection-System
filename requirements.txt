@@ -1,0 +1,28 @@
+# Fake News Detection System - Python dependencies
+#
+# Install everything with:
+#     pip install -r requirements.txt
+#
+# Versions below are the ones this project was built and tested against.
+# They are pinned so the results are reproducible: a different scikit-learn or
+# numpy major version can change both the numbers and the saved model format.
+
+# --- Web framework ---
+Flask==3.1.1
+
+# --- Machine learning ---
+scikit-learn==1.5.2          # TF-IDF, Naive Bayes, SVM, Random Forest, metrics
+numpy==2.3.3                 # required by scikit-learn
+scipy==1.18.1                # required by scikit-learn
+
+# --- Data handling (training only; the web app does not import pandas) ---
+pandas==3.0.6                # reading and cleaning the dataset CSVs
+
+# --- Model serialisation ---
+joblib==1.5.2                # saving/loading the model and vectoriser
+
+# --- Natural language processing ---
+nltk==3.10.3                 # stop-word list and lemmatiser
+
+# No database package is required. The detection system keeps no user data.
+# No external AI/API key is required: the classifier is the trained model.

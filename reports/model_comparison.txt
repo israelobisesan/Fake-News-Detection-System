@@ -1,0 +1,103 @@
+==============================================================================
+FAKE NEWS DETECTION - MODEL TRAINING AND COMPARISON REPORT
+==============================================================================
+Generated          : 2026-10-04 23:01:26
+Python             : 3.13.2
+scikit-learn       : 1.5.2
+Random state       : 42
+
+Raw records read   : 44,898
+Usable records     : 38,658 (FAKE 17,462 / TRUE 21,196)
+Records dropped    : 5,609 duplicate, 631 empty
+Split              : train 27,060 (70%) / validation 5,799 (15%) / test 5,799 (15%), stratified
+TF-IDF             : ngrams (1, 2), min_df 2, max_features 50,000, sublinear_tf True
+
+Precision, recall and F1 are computed for the FAKE class (positive class).
+
+==============================================================================
+EXPERIMENT: naive_baseline
+  Publisher markers left in (Reuters datelines, outlet names, URLs)
+==============================================================================
+  VALIDATION SET - all three models
+  Model                        Accuracy  Precision    Recall       F1
+  ------------------------------------------------------------------------
+  Multinomial Naive Bayes        0.9617     0.9504    0.9656   0.9580
+  Calibrated Linear SVM          0.9952     0.9981    0.9912   0.9946  <-- selected
+  Random Forest                  0.9921     0.9954    0.9870   0.9912
+
+  Selected model : Calibrated Linear SVM
+  Reason         : highest validation F1 for the FAKE class (0.9946, accuracy 0.9952)
+
+  CONFUSION MATRICES - validation set (rows = true, cols = predicted)
+  Model                       true FAKE/pred FAKE  true FAKE/pred TRUE
+  Multinomial Naive Bayes                   2,530                   90
+  Calibrated Linear SVM                     2,597                   23
+  Random Forest                             2,586                   34
+                              true TRUE/pred FAKE  true TRUE/pred TRUE
+  Multinomial Naive Bayes                     132                3,047
+  Calibrated Linear SVM                         5                3,174
+  Random Forest                                12                3,167
+
+  TEST SET - selected model only
+  ------------------------------------------------------------------------
+  Accuracy    : 0.9962
+  Precision   : 0.9981
+  Recall      : 0.9935
+  F1          : 0.9958
+
+==============================================================================
+EXPERIMENT: de_leaked
+  Publisher markers removed - reflects writing style, not publisher
+==============================================================================
+  VALIDATION SET - all three models
+  Model                        Accuracy  Precision    Recall       F1
+  ------------------------------------------------------------------------
+  Multinomial Naive Bayes        0.9522     0.9386    0.9569   0.9476
+  Calibrated Linear SVM          0.9895     0.9942    0.9824   0.9883  <-- selected
+  Random Forest                  0.9724     0.9786    0.9599   0.9692
+
+  Selected model : Calibrated Linear SVM
+  Reason         : highest validation F1 for the FAKE class (0.9883, accuracy 0.9895)
+
+  CONFUSION MATRICES - validation set (rows = true, cols = predicted)
+  Model                       true FAKE/pred FAKE  true FAKE/pred TRUE
+  Multinomial Naive Bayes                   2,506                  113
+  Calibrated Linear SVM                     2,573                   46
+  Random Forest                             2,514                  105
+                              true TRUE/pred FAKE  true TRUE/pred TRUE
+  Multinomial Naive Bayes                     164                3,015
+  Calibrated Linear SVM                        15                3,164
+  Random Forest                                55                3,124
+
+  TEST SET - selected model only
+  ------------------------------------------------------------------------
+  Accuracy    : 0.9888
+  Precision   : 0.9938
+  Recall      : 0.9813
+  F1          : 0.9875
+
+==============================================================================
+WHY TWO EXPERIMENTS?
+==============================================================================
+Every genuine article in ISOT is Reuters wire copy and carries a
+'(Reuters)' marker; almost no fake article does. A model can therefore score
+very highly by recognising the publisher instead of the writing style, which
+would not generalise to real-world news. The de-leaked run removes those
+markers so the reported score reflects language rather than provenance.
+
+  Model                        Naive F1  De-leaked F1  Difference
+  ------------------------------------------------------------------------
+  Multinomial Naive Bayes        0.9580        0.9476     -0.0103
+  Calibrated Linear SVM          0.9946        0.9883     -0.0064
+  Random Forest                  0.9912        0.9692     -0.0220
+
+These are validation-set figures. The deployed model is the de-leaked run.
+
+==============================================================================
+INTERPRETATION
+==============================================================================
+A high score on ISOT does NOT mean the system is accurate on news from other
+countries, other publishers or other eras. ISOT's fake half comes from a small
+group of unreliable outlets and its genuine half is homogeneous Reuters copy, so
+the benchmark is far easier than real-world misinformation detection. Treat the
+figures above as a measurement on THIS dataset, not as a general capability.

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Fake News Detection System{% endblock %}</title>
+  <meta name="description" content="Machine learning and natural language processing system for classifying news articles as likely fake or likely genuine.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#128220;</text></svg>">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{{ url_for('main.index') }}">
+        <span class="brand-mark" aria-hidden="true">NF</span>
+        <span class="brand-text">
+          <strong>Fake News Detection</strong>
+          <small>Machine Learning &amp; NLP</small>
+        </span>
+      </a>
+      <nav class="site-nav">
+        <a href="{{ url_for('main.index') }}">Analyse</a>
+        <a href="{{ url_for('main.health') }}">Status</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p class="footer-note">
+        <strong>Please read this before using the system.</strong>
+        This system uses machine learning patterns learned from its training dataset
+        to classify submitted news content. The result is a prediction and should not
+        be treated as definitive fact verification. It does not replace professional
+        fact-checkers.
+      </p>
+      <p class="footer-note">
+        <strong>What the confidence score means.</strong>
+        Confidence represents the model's confidence in its classification, not the
+        probability that the news is objectively true or false.
+      </p>
+      <p class="footer-meta">
+        Trained on the ISOT Fake News Dataset. Not trained on Nigerian news &mdash;
+        performance on other regions is not guaranteed.
+      </p>
+    </div>
+  </footer>
+
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

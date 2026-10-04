@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ result.display_label }} &middot; Analysis Result{% endblock %}
+
+{% block content %}
+{% set is_fake = result.label == 'FAKE' %}
+<section class="card result-card {{ 'result-fake' if is_fake else 'result-genuine' }}">
+  <h1 class="result-heading">Analysis Result</h1>
+
+  <div class="verdict">
+    <span class="verdict-label">{{ result.display_label }}</span>
+    <span class="verdict-confidence">{{ "%.2f"|format(result.confidence) }}%</span>
+  </div>
+
+  <div class="confidence-block">
+    <div class="confidence-labels">
+      <span>Confidence</span>
+      <strong>{{ result.confidence_text }}</strong>
+    </div>
+    <div class="confidence-track" role="img"
+         aria-label="Model confidence {{ result.confidence_text }}">
+      <div class="confidence-fill" data-confidence="{{ result.confidence }}"></div>
+    </div>
+    <p class="confidence-scale"><span>0%</span><span>50%</span><span>100%</span></p>
+  </div>
+
+  <p class="confidence-explain">
+    This score is the model's confidence in the classification above. It is
+    <strong>not</strong> the probability that the article is objectively true or false.
+  </p>
+
+  <details class="prob-breakdown">
+    <summary>Probability breakdown</summary>
+    <table class="prob-table">
+      <thead><tr><th>Class</th><th>Probability</th></tr></thead>
+      <tbody>
+        {% for label, prob in result.probabilities.items() %}
+        <tr class="{{ 'is-selected' if label == result.label else '' }}">
+          <td>{{ 'Likely Fake' if label == 'FAKE' else 'Likely Genuine' }}</td>
+          <td>{{ "%.2f"|format(prob * 100) }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+
+  <dl class="result-meta">
+    <div><dt>Model</dt><dd>{{ model_name }}</dd></div>
+    <div><dt>Analysed</dt><dd>{{ analysed_at }}</dd></div>
+  </dl>
+
+  <a class="btn btn-primary btn-block" href="{{ url_for('main.index') }}">Analyse Another Article</a>
+</section>
+
+<section class="card">
+  <h2>Submitted Article</h2>
+  <div class="submitted">
+    {% if title_text %}
+    <h3 class="submitted-title">{{ title_text }}</h3>
+    {% endif %}
+    <p class="submitted-body">{{ article_text }}</p>
+  </div>
+</section>
+
+<section class="card card-muted">
+  <h2>Interpreting this result</h2>
+  <p>
+    The classifier reads the submitted text and compares its learned word and phrase
+    patterns against those it saw while learning. The label it returns is a
+    statistical prediction, not a verification of the claims inside the article.
+  </p>
+  <p>
+    News outlets the model has never seen, non-English articles and articles on
+    subjects outside the training data may be classified unreliably. This model was
+    trained on the ISOT dataset, which is US-centric and dominated by political
+    reporting from 2016&ndash;2017.
+  </p>
+</section>
+{% endblock %}

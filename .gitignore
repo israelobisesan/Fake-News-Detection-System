@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Trained model artifacts.
+# These ARE committed (about 2.4 MB in total) so that anyone who clones the
+# repository can run `python run.py` straight away without retraining first.
+# If you would rather keep binaries out of git history, uncomment the next line.
+# models/*.pkl
+
+# The ISOT dataset is NOT redistributed here: it is 111 MB and is published
+# under CC BY-NC-SA 4.0. Download it yourself, then place both files in dataset/:
+#   https://www.kaggle.com/datasets/clmentbisaillon/fake-and-real-news-dataset
+dataset/*.csv
+
+# Local logs and scratch output
+*.log
+logs_*.txt
+server_out.txt
+server_err.txt
+test_out.txt
+test_err.txt
+
+# Editor / OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

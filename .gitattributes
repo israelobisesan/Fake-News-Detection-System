@@ -1,0 +1,21 @@
+# Keep line endings consistent across platforms.
+# Without this, Windows checks out CRLF while Linux/macOS check out LF, which
+# produces noisy whole-file diffs. Text is stored with LF in the repository and
+# converted on checkout.
+* text=auto eol=lf
+
+# Windows scripts really are CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary files must never be line-ending converted.
+*.pkl binary
+*.png binary
+*.jpg binary
+*.zip binary
+
+# Keep the dataset out of the repository even if someone drops it in the
+# project root by mistake rather than in dataset/.
+Fake.csv binary -diff
+True.csv binary -diff

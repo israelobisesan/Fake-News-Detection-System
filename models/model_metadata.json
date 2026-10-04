@@ -1,0 +1,172 @@
+{
+  "model_name": "Calibrated Linear SVM",
+  "generated_at": "2026-10-04 23:01:26",
+  "python_version": "3.13.2",
+  "sklearn_version": "1.5.2",
+  "validation_accuracy": 0.9894791307347361,
+  "validation_precision": 0.9942040185471407,
+  "validation_recall": 0.9824360442917144,
+  "validation_f1": 0.9882850009602459,
+  "test_accuracy": 0.988791170891533,
+  "test_precision": 0.9938128383604021,
+  "test_recall": 0.9812905689194349,
+  "test_f1": 0.9875120076849183,
+  "selection_reason": "highest validation F1 for the FAKE class (0.9883, accuracy 0.9895)",
+  "random_state": 42,
+  "label_mapping": {
+    "FAKE": "Likely Fake",
+    "TRUE": "Likely Genuine"
+  },
+  "class_order": [
+    "FAKE",
+    "TRUE"
+  ],
+  "dataset": {
+    "name": "ISOT Fake News Dataset",
+    "rows_read": 44898,
+    "rows_usable": 38658,
+    "rows_dropped_duplicate": 5609,
+    "rows_dropped_empty": 631,
+    "fake_rows": 17462,
+    "true_rows": 21196
+  },
+  "split_sizes": {
+    "train": 27056,
+    "validation": 5798,
+    "test": 5799
+  },
+  "split_ratio": {
+    "train": 0.7,
+    "validation": 0.15,
+    "test": 0.15
+  },
+  "tfidf": {
+    "ngram_range": [
+      1,
+      2
+    ],
+    "min_df": 2,
+    "max_df": 0.9,
+    "max_features": 50000,
+    "sublinear_tf": true,
+    "token_pattern": "(?u)\\b[a-z][a-z]+\\b",
+    "vocabulary_size": 50000,
+    "fitted_on": "training split only"
+  },
+  "preprocessing": {
+    "strip_source_artifacts": true,
+    "remove_stopwords": true,
+    "remove_numbers": true,
+    "lemmatize_requested": true,
+    "lemmatize_active": true,
+    "stopwords_active": true,
+    "nltk_stopword_count": 198,
+    "min_token_length": 3
+  },
+  "model_parameters": {
+    "Multinomial Naive Bayes": {
+      "alpha": 0.1
+    },
+    "Calibrated Linear SVM": {
+      "C": 1.0,
+      "cv": 5,
+      "method": "sigmoid"
+    },
+    "Random Forest": {
+      "n_estimators": 100,
+      "max_features": "sqrt",
+      "min_samples_leaf": 2,
+      "n_jobs": -1,
+      "random_state": 42
+    }
+  },
+  "test_confusion_matrix": [
+    [
+      2570,
+      49
+    ],
+    [
+      16,
+      3164
+    ]
+  ],
+  "experiments": {
+    "naive_baseline": {
+      "description": "Publisher markers left in (Reuters datelines, outlet names, URLs)",
+      "validation": {
+        "Multinomial Naive Bayes": {
+          "accuracy": 0.9617175375064666,
+          "precision": 0.9504132231404959,
+          "recall": 0.9656488549618321,
+          "f1": 0.957970465732677,
+          "f1_macro": 0.9614108186801447,
+          "f1_weighted": 0.961742454703189
+        },
+        "Calibrated Linear SVM": {
+          "accuracy": 0.9951715813071219,
+          "precision": 0.9980784012298232,
+          "recall": 0.9912213740458016,
+          "f1": 0.9946380697050938,
+          "f1_macro": 0.9951233008500375,
+          "f1_weighted": 0.9951700751576809
+        },
+        "Random Forest": {
+          "accuracy": 0.9920675978617003,
+          "precision": 0.9953810623556582,
+          "recall": 0.9870229007633587,
+          "f1": 0.9911843618244538,
+          "f1_macro": 0.9919871652382457,
+          "f1_weighted": 0.9920645522201926
+        }
+      },
+      "selected_model": "Calibrated Linear SVM",
+      "test": {
+        "accuracy": 0.9962062424555957,
+        "precision": 0.9980820866896817,
+        "recall": 0.9935089728904162,
+        "f1": 0.995790279372369,
+        "f1_macro": 0.9961688371124242,
+        "f1_weighted": 0.9962054590976236
+      }
+    },
+    "de_leaked": {
+      "description": "Publisher markers removed - reflects writing style, not publisher",
+      "validation": {
+        "Multinomial Naive Bayes": {
+          "accuracy": 0.9522249051397034,
+          "precision": 0.9385767790262173,
+          "recall": 0.9568537609774723,
+          "f1": 0.9476271506901115,
+          "f1_macro": 0.9518538480579144,
+          "f1_weighted": 0.9522620837471124
+        },
+        "Calibrated Linear SVM": {
+          "accuracy": 0.9894791307347361,
+          "precision": 0.9942040185471407,
+          "recall": 0.9824360442917144,
+          "f1": 0.9882850009602459,
+          "f1_macro": 0.9893686704597755,
+          "f1_weighted": 0.9894733367101612
+        },
+        "Random Forest": {
+          "accuracy": 0.9724042773370127,
+          "precision": 0.9785908913974309,
+          "recall": 0.9599083619702177,
+          "f1": 0.969159599074788,
+          "f1_macro": 0.9720954050305276,
+          "f1_weighted": 0.9723789599348419
+        }
+      },
+      "selected_model": "Calibrated Linear SVM",
+      "test": {
+        "accuracy": 0.988791170891533,
+        "precision": 0.9938128383604021,
+        "recall": 0.9812905689194349,
+        "f1": 0.9875120076849183,
+        "f1_macro": 0.9886723185616832,
+        "f1_weighted": 0.9887845679843191
+      }
+    }
+  },
+  "disclaimer": "Measured on the ISOT dataset only. Confidence is the model's confidence in its own classification, not the probability that the article is true or false. Not trained on Nigerian news."
+}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Analyse a news article &middot; Fake News Detection{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Fake News Detection System</h1>
+  <p class="hero-sub">
+    Analyse a news article using Machine Learning and Natural Language Processing.
+  </p>
+</section>
+
+<section class="card">
+  {% if errors.form %}
+    <div class="alert alert-error" role="alert">{{ errors.form }}</div>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('main.predict') }}" id="detect-form" novalidate>
+    <div class="field">
+      <label for="title">Headline</label>
+      <input
+        type="text"
+        id="title"
+        name="title"
+        value="{{ form.title|default('') }}"
+        maxlength="300"
+        placeholder="e.g. Government announces new economic policy"
+        autocomplete="off"
+        {% if errors.title %}aria-invalid="true" aria-describedby="title-error"{% endif %}>
+      <div class="field-meta">
+        <span class="counter" data-counter-for="title">0 / 300</span>
+      </div>
+      {% if errors.title %}
+        <p class="field-error" id="title-error" role="alert">{{ errors.title }}</p>
+      {% endif %}
+    </div>
+
+    <div class="field">
+      <label for="article">News Article</label>
+      <textarea
+        id="article"
+        name="article"
+        rows="12"
+        placeholder="Paste the full text of the news article here."
+        {% if errors.article %}aria-invalid="true" aria-describedby="article-error"{% endif %}>{{ form.article|default('') }}</textarea>
+      <div class="field-meta">
+        <span class="hint">Minimum 20 characters. HTML is escaped automatically &mdash; pasted markup is never executed.</span>
+        <span class="counter" data-counter-for="article">0 characters</span>
+      </div>
+      {% if errors.article %}
+        <p class="field-error" id="article-error" role="alert">{{ errors.article }}</p>
+      {% endif %}
+    </div>
+
+    <div class="actions">
+      <button type="submit" class="btn btn-primary" id="submit-btn">
+        <span class="btn-label">Detect News</span>
+        <span class="btn-spinner" aria-hidden="true"></span>
+      </button>
+      <button type="reset" class="btn btn-ghost">Clear</button>
+    </div>
+  </form>
+</section>
+
+<section class="card card-muted">
+  <h2>How the classification works</h2>
+  <ol class="steps">
+    <li>Your headline and article text are combined into a single input.</li>
+    <li>The text is cleaned: lowercased, punctuation and numbers removed, stop words dropped and words reduced to their root form.</li>
+    <li>Publisher markers such as wire-service datelines and URLs are removed, so the model judges the writing rather than the source.</li>
+    <li>TF-IDF converts the cleaned text into numeric features using the vocabulary learned during training.</li>
+    <li>The trained classifier predicts a label and a probability, which becomes the confidence score.</li>
+  </ol>
+</section>
+{% endblock %}
