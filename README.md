@@ -119,7 +119,12 @@ fake-news-detection/
 ├── tests/
 │   └── test_app.py            12 checks, no test-runner needed
 ├── run.py                     entry point
-├── requirements.txt
+├── requirements.txt           dependencies for local development
+├── requirements-deploy.txt    adds gunicorn; for a Linux server only
+├── .python-version            pins Python 3.13 on the hosting platform
+├── render.yaml                Render blueprint (build/start/health/env)
+├── .gitattributes             consistent line endings across platforms
+├── .gitignore
 └── README.md
 ```
 
@@ -503,7 +508,94 @@ friendly message.
 
 ---
 
-## 19. Command summary
+## 19. Deploying to Render (free)
+
+The app can be hosted publicly. Only `render.yaml`, `.python-version` and
+`requirements-deploy.txt` exist for this; the model itself is already committed.
+
+### What Render runs
+
+```
+Build:  pip install -r requirements-deploy.txt && python training/prepare_nltk.py
+Start:  gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 run:app
+```
+
+The build step downloads the two NLTK corpora so the app never downloads anything
+while serving a request. It also repairs the case where NLTK fetches WordNet but
+fails to unpack it, which would otherwise make the app quietly skip lemmatisation.
+
+### Steps
+
+1. Push the repository to GitHub (done).
+2. Sign in at <https://render.com>, then **New → Blueprint**.
+3. Connect `israelobisesan/Fake-News-Detection-System` and apply.
+4. Wait for the build, then open the `onrender.com` URL it gives you.
+
+Render reads `render.yaml` and fills in the build command, start command, health
+check and the `FLASK_SECRET_KEY` (generated automatically as a 256-bit value).
+
+### Why one worker
+
+Each gunicorn worker holds roughly **277 MB** once scikit-learn, scipy, pandas,
+NLTK and the model are loaded. Render's free tier provides **512 MB**, so a second
+worker would exceed the limit and be killed for memory. Raise `--workers` only after
+moving to a larger instance.
+
+### What to expect from the free tier
+
+| | |
+|---|---|
+| Compute | 0.1 CPU, 512 MB |
+| Sleeps after | 15 minutes without traffic |
+| Cold start | 30-60 seconds to wake, plus ~4 s to load the model |
+| Storage | Ephemeral - nothing persists, which is fine as the app stores no user data |
+| Card | Not required |
+| Always-on alternative | Render Starter, $7/month |
+
+**The cold start matters.** If you open the link during a demo after the app has
+been idle, the first page load will appear to hang for up to a minute. Hit
+`/health` yourself a minute beforehand to wake it.
+
+### Deploying by hand instead
+
+Ignore `render.yaml` and use **New → Web Service**. Copy the Build and Start
+commands above, and set two environment variables in the dashboard:
+
+| Variable | Value |
+|---|---|
+| `FLASK_SECRET_KEY` | any long random string |
+| `FLASK_DEBUG` | `0` |
+
+Keep `requirements.txt` for local Windows work and `requirements-deploy.txt` for
+the server. gunicorn only runs on Linux, so it lives in the deployment file only.
+
+### Other platforms
+
+`requirements-deploy.txt` and the gunicorn start command also work on Railway and
+Fly.io. For anything else, run gunicorn directly on a Linux host:
+
+```bash
+pip install -r requirements-deploy.txt
+python training/prepare_nltk.py
+export FLASK_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_hex(32))')"
+gunicorn --bind 0.0.0.0:8000 --workers 1 run:app
+```
+
+Put nginx or Caddy in front for TLS. The app needs no database, no writable
+directory and no external API keys.
+
+### Health check
+
+`GET /health` returns the loaded model and its measured test accuracy, and returns
+HTTP 503 if the model artifacts are missing:
+
+```json
+{"labels":["FAKE","TRUE"],"model":"Calibrated Linear SVM","status":"ok","test_accuracy":0.988791170891533}
+```
+
+---
+
+## 20. Command summary
 
 ```powershell
 pip install -r requirements.txt      # install dependencies
@@ -511,5 +603,8 @@ python training/prepare_nltk.py      # one-time NLTK resources
 python training/data_loader.py       # verify the dataset loads
 python training/train.py             # train, compare, select, save
 python tests/test_app.py             # run the checks
-python run.py                        # start the web app
+python run.py                        # start the web app locally
 ```
+
+On a Linux host, install from `requirements-deploy.txt` instead and start with
+gunicorn - see section 19.

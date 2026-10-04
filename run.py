@@ -29,9 +29,28 @@ from app import create_app  # noqa: E402
 app = create_app()
 
 
+def resolve_host_and_port() -> tuple[str, int]:
+    """Work out which address and port to bind to.
+
+    Local development binds to 127.0.0.1:5000 so nothing is exposed to the
+    network. Hosted platforms are different: they reach the app only from
+    outside the container and they inject their own port through the ``PORT``
+    environment variable. A service that binds to localhost is unreachable, so
+    ``PORT`` being present is taken as the signal that we are running on a
+    platform, and we bind to all interfaces instead.
+
+    Precedence:
+        port   PORT  ->  FLASK_PORT  ->  5000
+        host   FLASK_HOST (always wins)  ->  0.0.0.0 if PORT set, else 127.0.0.1
+    """
+    platform_port = os.environ.get("PORT")
+    host = os.environ.get("FLASK_HOST") or ("0.0.0.0" if platform_port else "127.0.0.1")
+    port = int(platform_port or os.environ.get("FLASK_PORT") or 5000)
+    return host, port
+
+
 def main() -> None:
-    host = os.environ.get("FLASK_HOST", "127.0.0.1")
-    port = int(os.environ.get("FLASK_PORT", "5000"))
+    host, port = resolve_host_and_port()
 
     # Debug mode is handy while developing but must be off in production: it
     # enables the interactive debugger and reloader.
@@ -42,6 +61,7 @@ def main() -> None:
     print("=" * 60)
     print(f"  URL      : http://{host}:{port}")
     print(f"  Debug    : {debug}")
+    print(f"  Workers  : 1 (development server)")
     print("  Stop     : press Ctrl + C")
     print("=" * 60)
 

@@ -1,0 +1,22 @@
+# Deployment dependencies (Render, Railway, Fly.io, any Linux host).
+#
+# Use this file on a server; use requirements.txt for local development.
+# The difference is gunicorn, a production WSGI server that only runs on
+# POSIX systems, so keeping it out of requirements.txt stops
+# `pip install -r requirements.txt` from installing something that cannot
+# actually be imported on Windows.
+#
+# Render build command:
+#     pip install -r requirements-deploy.txt
+
+-r requirements.txt
+
+# Production WSGI server. Flask's built-in server (app.run) is explicitly not
+# suitable for production.
+#
+# --workers 1 is deliberate, not a default to change casually: the app needs
+# about 277 MB per worker once scikit-learn, scipy, pandas, NLTK and the
+# model are loaded. Render's free tier provides 512 MB, so a second worker
+# would exceed the limit and be killed for using too much memory. Moving to a
+# larger instance first if you raise this number.
+gunicorn==26.2.0

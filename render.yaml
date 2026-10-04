@@ -1,0 +1,57 @@
+# Render Blueprint - one-click deployment.
+#
+# Because this file sits in the repository root, you can deploy from the Render
+# dashboard with:  New  ->  Blueprint  ->  select this repository.
+# Render then reads every setting below and builds the service for you.
+#
+# You can also ignore this file and create a Web Service manually - just copy
+# the Build and Start commands from it.
+
+services:
+  - type: web
+    name: fake-news-detection-system
+    runtime: python
+
+    # Free tier: 0.1 CPU / 512 MB. Suitable for a demonstration or coursework,
+    # not for real traffic. The instance sleeps after 15 minutes of inactivity,
+    # so the first visitor after a quiet period waits 30-60 seconds while it
+    # starts up.
+    plan: free
+
+    # Installs the pinned dependencies, then downloads the two NLTK corpora
+    # the preprocessing pipeline needs (stopwords and wordnet).
+    #
+    # Running prepare_nltk.py here rather than at start-up keeps the app from
+    # ever trying to download anything while serving a request. It also repairs
+    # the common case where NLTK downloads wordnet but fails to unpack it,
+    # which would otherwise leave the app silently skipping lemmatisation.
+    buildCommand: pip install -r requirements-deploy.txt && python training/prepare_nltk.py
+
+    # --workers 1 is deliberate: each worker holds roughly 277 MB once
+    # scikit-learn, scipy, pandas, NLTK and the model are loaded, and the free
+    # plan provides 512 MB. A second worker would be killed for using too much
+    # memory. Upgrade the instance before increasing this.
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 --access-logfile - run:app
+
+    # Render polls this to decide the service is alive. The endpoint returns
+    # 503 with a clear message if the model artifacts are missing.
+    healthCheckPath: /health
+
+    autoDeployTrigger: commit
+
+    envVars:
+      # Generated once by Render as a base64-encoded 256-bit value. Do not
+      # hardcode a secret in this file.
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+
+      # Never enable the debugger or reloader in production.
+      - key: FLASK_DEBUG
+        value: "0"
+
+# No database is declared because the system stores nothing between requests.
+# Nothing a user submits is written to disk.
+#
+# The ISOT dataset is deliberately absent: serving the app does not need it,
+# only `python training/train.py` does, and it is 111 MB under a
+# non-commercial licence that this repository should not redistribute.
