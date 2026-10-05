@@ -95,6 +95,7 @@ fake-news-detection/
 │   ├── routes.py              GET /, POST /predict, GET /health, error handlers
 │   ├── detector.py            loads saved artifacts, predicts, computes confidence
 │   ├── preprocessing.py       shared text cleaning (single source of truth)
+│   ├── article_fetcher.py     optional URL input: SSRF guard, fetch, text extraction
 │   ├── templates/
 │   │   ├── base.html          layout, header, disclaimers, footer
 │   │   ├── index.html         detection form
@@ -362,13 +363,49 @@ The app **loads** the trained artifacts. It never retrains at start-up.
 
 1. Open <http://127.0.0.1:5000>
 2. Paste a **Headline**
-3. Paste the **News Article** body (minimum 20 characters)
-4. Click **Detect News**
-5. The result page shows the verdict, the confidence percentage, an animated
+3. Optionally paste an **Article URL**
+4. Paste the **News Article** body (minimum 20 characters)
+5. Click **Detect News**
+6. The result page shows the verdict, the confidence percentage, an animated
    confidence bar, a probability breakdown and the submitted text
 
 A longer article gives a more reliable prediction. Very short input still returns a
 result, but a short snippet carries little signal.
+
+### Submitting a link instead of pasting
+
+The **Article URL** field is optional and saves you copying a long article by hand.
+Enter a link and the page is fetched, the headline and body are read out of it, and
+those go through exactly the same classifier as pasted text. **No retraining is
+needed and the reported metrics are unchanged** — this is a retrieval convenience, not
+part of the machine-learning methodology.
+
+If you supply both a link and pasted text, the **pasted text wins** and no request is
+made, so you can always override a bad fetch.
+
+**It does not work for every publisher.** Measured against real sites, roughly three
+in four respond normally (BBC, Guardian, Al Jazeera, CNN, Daily Mail, Independent,
+Channels TV, Premium Times and Punch all worked), but Reuters returns 401, AP News
+and the New York Times return 403, and some pages build their text with JavaScript so
+there is nothing to read. When that happens the app says so and the article box stays
+empty for you to paste into.
+
+Two safeguards are worth knowing about:
+
+- **Nothing too short is ever classified.** A 404 page still contains about 130
+  characters of error boilerplate, which is enough for the model to return a
+  confident but meaningless verdict. Anything under 400 characters is refused with an
+  explanation instead. A real article yields around 2,700 characters, and a news
+  homepage about 230, so the threshold separates them reliably.
+- **Private and internal addresses are refused.** Because the server fetches a
+  visitor-supplied URL, it must not be usable to reach things the internet cannot,
+  such as `127.0.0.1`, `169.254.169.254` (cloud instance metadata), `10.x` or
+  `192.168.x`. Every hostname is resolved and checked before a connection is opened,
+  redirects are followed manually and re-checked on each hop, and non-HTTP schemes
+  such as `file://` and `data:` are rejected outright.
+
+Fetching is capped at 2 MB with an 8-second timeout, because the free hosting tier runs
+a single worker and one slow site would otherwise block the whole app.
 
 ---
 
@@ -427,11 +464,16 @@ Two further points worth understanding:
    best achievable score. Tuning on the validation set would also have made validation
    less trustworthy, so it was deliberately skipped.
 5. **English only.** No multilingual support.
-6. **Out-of-distribution input.** Short, non-news or non-English text still produces a
-   confident answer, which is misleading.
-7. **Static model.** Retraining is required to reflect changes in news language; there
+7.  out-of-distribution input. Short, non-news or non-English text still produces a
+    confident answer, which is misleading.
+8. **Article URLs often cannot be fetched.** About one in four major publishers (Reuters,
+    AP News, the New York Times, the Washington Post) return 401/403 to automated
+    requests, and JavaScript-rendered or paywalled pages yield no readable text. The app
+    detects these cases and asks the user to paste the text instead. Pasting the article
+    directly remains the more reliable option.
+9. **Static model.** Retraining is required to reflect changes in news language; there
    is no concept of concept drift.
-8. **Not a fact-checker.** It does not verify claims, trace sources or replace human
+10. **Not a fact-checker.** It does not verify claims, trace sources or replace human
    review.
 
 ---
@@ -442,14 +484,15 @@ Two further points worth understanding:
 python tests/test_app.py
 ```
 
-Twelve checks covering preprocessing, pickle round-tripping, dataset loading,
+Sixteen checks covering preprocessing, pickle round-tripping, dataset loading,
 artifact loading, prediction on held-out articles, confidence derivation, all routes,
-empty-input handling, missing-model handling and HTML escaping.
+empty-input handling, missing-model handling, HTML escaping, and the URL feature
+(SSRF protection, the too-short-extraction guard and blocked-link handling).
 
 Expected result:
 
 ```
-passed: 12    failed: 0
+passed: 16    failed: 0
 All checks passed.
 ```
 

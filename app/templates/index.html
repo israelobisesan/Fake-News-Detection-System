@@ -35,6 +35,33 @@
     </div>
 
     <div class="field">
+      <label for="url">Article URL <span class="optional">optional</span></label>
+      <input
+        type="url"
+        id="url"
+        name="url"
+        value="{{ form.url|default('') }}"
+        placeholder="https://example.com/news/story"
+        autocomplete="off"
+        inputmode="url"
+        {% if errors.url %}aria-invalid="true" aria-describedby="url-error"{% endif %}>
+      <div class="field-meta">
+        <span class="hint">
+          Paste a link and the article text is fetched for you. If you also paste the
+          text below, the pasted text is used and the link is ignored.
+        </span>
+      </div>
+      {% if errors.url %}
+        <p class="field-error" id="url-error" role="alert">{{ errors.url }}</p>
+      {% endif %}
+      <p class="field-note">
+        Some publishers (for example Reuters, the New York Times and AP) refuse
+        automated requests, and some pages build their text with JavaScript.
+        If the link cannot be read, paste the article into the box below instead.
+      </p>
+    </div>
+
+    <div class="field">
       <label for="article">News Article</label>
       <textarea
         id="article"
@@ -65,6 +92,7 @@
   <h2>How the classification works</h2>
   <ol class="steps">
     <li>Your headline and article text are combined into a single input.</li>
+    <li>If you supplied a link instead of pasting, the page is fetched and the headline and body are read from it. Private and internal addresses are refused, and the text must be substantial enough to be a real article.</li>
     <li>The text is cleaned: lowercased, punctuation and numbers removed, stop words dropped and words reduced to their root form.</li>
     <li>Publisher markers such as wire-service datelines and URLs are removed, so the model judges the writing rather than the source.</li>
     <li>TF-IDF converts the cleaned text into numeric features using the vocabulary learned during training.</li>

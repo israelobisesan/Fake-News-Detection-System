@@ -24,5 +24,12 @@ joblib==1.5.2                # saving/loading the model and vectoriser
 # --- Natural language processing ---
 nltk==3.10.3                 # stop-word list and lemmatiser
 
+# --- Optional article-URL input ---
+# Only used when a visitor supplies a link instead of pasting the text.
+# Removing these three packages disables that feature; everything else works.
+requests==2.32.4             # HTTP client for fetching a link
+beautifulsoup4==4.13.5       # parses the returned HTML
+lxml==6.0.2                  # fast HTML parser used by BeautifulSoup
+
 # No database package is required. The detection system keeps no user data.
 # No external AI/API key is required: the classifier is the trained model.

@@ -46,6 +46,9 @@
   <dl class="result-meta">
     <div><dt>Model</dt><dd>{{ model_name }}</dd></div>
     <div><dt>Analysed</dt><dd>{{ analysed_at }}</dd></div>
+    {% if source_url %}
+    <div><dt>Retrieved from</dt><dd class="source-url">{{ source_url }}</dd></div>
+    {% endif %}
   </dl>
 
   <a class="btn btn-primary btn-block" href="{{ url_for('main.index') }}">Analyse Another Article</a>

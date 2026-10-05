@@ -348,6 +348,143 @@ def test_xss_escaping():
 
 
 # ==========================================================================
+# 13-16. Optional article-URL input
+# ==========================================================================
+
+@check("url input: refuses private, internal and non-http addresses (SSRF guard)")
+def test_ssrf_guard():
+    from app.article_fetcher import BlockedAddressError, InvalidURLError, validate_public_url
+
+    # These are the targets an SSRF attack would aim for.
+    must_be_private = [
+        "http://127.0.0.1/",
+        "http://localhost/",
+        "http://localhost:5000/health",
+        "http://169.254.169.254/latest/meta-data/",   # cloud instance metadata
+        "http://10.0.0.5/",
+        "http://192.168.1.1/",
+        "http://172.16.0.1/",
+        "http://[::1]/",
+        "http://100.64.0.1/",                          # carrier-grade NAT
+    ]
+    for url in must_be_private:
+        try:
+            validate_public_url(url)
+            raise AssertionError(f"NOT BLOCKED (security hole): {url}")
+        except (BlockedAddressError, InvalidURLError):
+            pass
+
+    # Dangerous schemes must never be requested. Note that "data:" and
+    # "javascript:" have no "//", so a naive bare-host fallback would turn them
+    # into https URLs and quietly bypass the scheme check.
+    for url in ("file:///etc/passwd", "file:///C:/Windows/win.ini",
+                "ftp://example.com/x", "gopher://example.com/",
+                "data:text/html,hi", "data:text/html;base64,PGgxPmhpPC9oMT4=",
+                "javascript:alert(1)", "mailto:someone@example.com",
+                "http://example.com:notaport/x"):
+        try:
+            validate_public_url(url)
+            raise AssertionError(f"scheme NOT BLOCKED: {url}")
+        except (BlockedAddressError, InvalidURLError):
+            pass
+
+    # Ordinary public addresses must still work, including a bare hostname.
+    assert validate_public_url("https://www.bbc.co.uk/news").startswith("https://")
+    assert validate_public_url("www.example.com/story").startswith("https://")
+
+
+@check("url input: refuses pages with too little text instead of guessing")
+def test_extraction_length_guard():
+    from app import article_fetcher as af
+
+    # An error page or a news index still contains enough boilerplate for the
+    # classifier to return a confident, meaningless verdict. Extraction must
+    # refuse these rather than pass them on.
+    stub_pages = [
+        "<html><body><h1>Not found</h1><p>Sorry, that page does not exist.</p></body></html>",
+        "<html><head><title>Home</title></head><body><nav>Menu</nav><p>News</p></body></html>",
+        "<html><body></body></html>",
+    ]
+    for html in stub_pages:
+        _, body = af.extract_article(html)
+        assert len(body) < af.MIN_BODY_CHARACTERS, (
+            f"stub page yielded {len(body)} characters, which is at or above the "
+            f"{af.MIN_BODY_CHARACTERS} minimum and would be classified"
+        )
+
+    # A realistic article must comfortably clear the bar.
+    article_html = (
+        "<html><head><title>T</title></head><body><nav>Menu</nav><h1>Real headline</h1>"
+        + "<div>" + "".join(
+            f"<p>This is sentence number {i} of a genuine news report about an event "
+            f"that a reporter observed and wrote down carefully.</p>" for i in range(12)
+        ) + "</div><footer>Copyright</footer></body></html>"
+    )
+    title, body = af.extract_article(article_html)
+    assert len(body) >= af.MIN_BODY_CHARACTERS, "a real article was rejected"
+    assert title == "Real headline", f"title extraction failed: {title!r}"
+    assert "Copyright" not in body and "Menu" not in body, "boilerplate leaked into the body"
+
+
+@check("url input: a blocked or invalid link gives a friendly message, not a traceback")
+def test_url_failure_handling():
+    from app import create_app
+
+    client = create_app({"TESTING": True}).test_client()
+
+    # A private address must be refused at the route, with an explanation.
+    private = client.post("/predict", data={
+        "title": "Some headline", "article": "",
+        "url": "http://169.254.169.254/latest/meta-data/",
+    })
+    assert private.status_code == 400, f"status {private.status_code}"
+    body = private.get_data(as_text=True)
+    assert "Traceback" not in body, "a traceback leaked to the user"
+    assert "private or internal network" in body, "no explanation for the refused address"
+
+    # Nonsense input must also be handled gracefully.
+    rubbish = client.post("/predict", data={
+        "title": "Some headline", "article": "", "url": "not a url at all !!!!",
+    })
+    assert rubbish.status_code == 400, f"status {rubbish.status_code}"
+    assert "Traceback" not in rubbish.get_data(as_text=True)
+
+    # An unreachable host should not hang the form or leak internals.
+    unreachable = client.post("/predict", data={
+        "title": "Some headline", "article": "",
+        "url": "https://this-host-should-not-resolve-9f8e7d.invalid/article",
+    })
+    assert unreachable.status_code in (400, 502), f"status {unreachable.status_code}"
+    assert "Traceback" not in unreachable.get_data(as_text=True)
+
+
+@check("url input: pasted text takes priority and the route is unchanged without a URL")
+def test_url_priority_and_regression():
+    from app import create_app
+    from training.data_loader import FAKE
+
+    title, text = _test_article(FAKE)
+    client = create_app({"TESTING": True}).test_client()
+
+    # With text present the URL is ignored entirely, so this must still work
+    # exactly as it did before the feature existed.
+    with_text = client.post("/predict", data={"title": title, "article": text, "url": ""})
+    assert with_text.status_code == 200, f"status {with_text.status_code}"
+    body = with_text.get_data(as_text=True)
+    assert ("Likely Fake" in body) or ("Likely Genuine" in body)
+    assert "Retrieved from" not in body, "no URL was supplied, so none should be reported"
+
+    # A URL plus pasted text must classify the pasted text, not fetch anything.
+    both = client.post("/predict", data={
+        "title": title, "article": text,
+        "url": "http://169.254.169.254/should-not-be-fetched",
+    })
+    assert both.status_code == 200, f"status {both.status_code}"
+    assert "should-not-be-fetched" not in both.get_data(as_text=True), \
+        "the URL was fetched even though text was pasted"
+
+
+# ==========================================================================
 # Runner
 # ==========================================================================
 

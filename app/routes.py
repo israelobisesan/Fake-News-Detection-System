@@ -26,6 +26,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, current_app, render_template, request
 
+from .article_fetcher import FetchError, fetch_article
 from .detector import ModelNotReadyError, PredictionError, get_detector
 
 logger = logging.getLogger(__name__)
@@ -51,12 +52,45 @@ def index():
 
 @main.route("/predict", methods=["POST"])
 def predict():
-    """Classify a submitted article."""
+    """Classify a submitted article, optionally fetched from a URL."""
     title = _read_field("title")
     article = _read_field("article")
+    url = _read_field("url")
+
+    # --- optionally retrieve the article from a URL ------------------------
+    # Pasted text always wins. The URL is a convenience for when the user does
+    # not want to copy and paste a long article by hand.
+    source_url = ""
+    url_error = ""
+
+    if url and not article:
+        try:
+            fetched = fetch_article(url)
+            article = fetched.body
+            # Use the page's own headline only if the user left theirs empty.
+            if not title:
+                title = fetched.title
+            source_url = fetched.final_url
+            current_app.logger.info(
+                "Fetched %d characters from %s", fetched.character_count, fetched.final_url
+            )
+        except FetchError as exc:
+            # Show the technical reason in the log, but return the message
+            # written for the user. Never a traceback.
+            current_app.logger.warning("URL fetch failed for %r: %s", url, exc)
+            url_error = exc.user_message
+        except Exception:  # noqa: BLE001 - the fetcher must never break the form
+            current_app.logger.exception("Unexpected error while fetching %r", url)
+            url_error = (
+                "Something went wrong while trying to open that link. "
+                "Please paste the article text directly instead."
+            )
 
     # --- validate ---------------------------------------------------------
     errors: dict[str, str] = {}
+
+    if url_error:
+        errors["url"] = url_error
 
     if not title and not article:
         errors["form"] = "Please enter a headline and the news article before analysing."
@@ -78,8 +112,13 @@ def predict():
         errors["title"] = f"The headline must be under {MAX_TITLE_LENGTH} characters."
 
     if errors:
-        return render_template("index.html", form={"title": title, "article": article},
-                               errors=errors), 400
+        # Hand the user's own text back so nothing is retyped, and keep the URL
+        # so they can correct a typo instead of pasting it all over again.
+        return render_template(
+            "index.html",
+            form={"title": title, "article": article, "url": url},
+            errors=errors,
+        ), 400
 
     # --- classify ---------------------------------------------------------
     try:
@@ -119,6 +158,7 @@ def predict():
         result=result,
         title_text=title,
         article_text=article,
+        source_url=source_url,
         model_name=detector.describe(),
         analysed_at=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
     )
